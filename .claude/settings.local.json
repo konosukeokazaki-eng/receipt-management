@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --no-git 2>&1 | tail -20)",
+      "Bash(npx create-next-app@latest . --typescript --tailwind --eslint --app --src-dir --import-alias \"@/*\" --no-git --yes 2>&1 | tail -30)",
+      "Bash(npm install:*)",
+      "Bash(cd \"C:\\\\Users\\\\user\\\\Documents\\\\ReceiptManagementSystem\" && npx tsc --noEmit 2>&1 | head -50)",
+      "Bash(cd \"C:\\\\Users\\\\user\\\\Documents\\\\ReceiptManagementSystem\" && npx tsc --noEmit 2>&1 | head -60)",
+      "Bash(cd \"C:\\\\Users\\\\user\\\\Documents\\\\ReceiptManagementSystem\" && npm run build 2>&1 | tail -40)"
+    ]
+  }
+}
