@@ -14,7 +14,7 @@ import {
   AlertCircle,
   ImageIcon,
 } from "lucide-react";
-import type { Company, AccountItem, User } from "@/db/schema";
+import type { AccountItem, User } from "@/db/schema";
 
 interface QueueItem {
   id: string;
@@ -31,18 +31,15 @@ interface QueueItem {
   // 個別上書き
   accountItemId?: string;
   claimantUserId?: string;
-  companyId?: string;
   purpose?: string;
 }
 
 interface BulkReceiptFormProps {
-  companies: Company[];
   accountItems: AccountItem[];
   users: User[];
 }
 
 export function BulkReceiptForm({
-  companies,
   accountItems,
   users,
 }: BulkReceiptFormProps) {
@@ -55,7 +52,6 @@ export function BulkReceiptForm({
   // 共通設定
   const [commonSettings, setCommonSettings] = useState({
     settlementMonth: getCurrentMonth(),
-    companyId: companies[0]?.id || "",
     claimantUserId: users[0]?.id || "",
     accountItemId: "",
   });
@@ -87,6 +83,17 @@ export function BulkReceiptForm({
       const formData = new FormData();
       formData.append("file", item.file);
       const result = await analyzeReceipt(formData);
+
+      if ("error" in result) {
+        setQueue((prev) =>
+          prev.map((i) =>
+            i.id === itemId
+              ? { ...i, status: "error", error: result.error }
+              : i
+          )
+        );
+        return;
+      }
 
       setQueue((prev) =>
         prev.map((i) =>
@@ -157,7 +164,7 @@ export function BulkReceiptForm({
             amount: parseInt(item.amount || "0") || 0,
             storeName: item.storeName || null,
             purpose: item.purpose || null,
-            companyId: item.companyId || commonSettings.companyId,
+            companyId: null,
             hasInvoice: item.hasInvoice || false,
             invoiceNumber: item.invoiceNumber || null,
             claimantUserId:
@@ -215,7 +222,7 @@ export function BulkReceiptForm({
       {/* 共通設定 */}
       <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
         <h2 className="text-base font-semibold text-gray-900 mb-4">共通設定</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">
               精算月
@@ -231,27 +238,6 @@ export function BulkReceiptForm({
               }
               className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm text-gray-900"
             />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
-              計上会社
-            </label>
-            <select
-              value={commonSettings.companyId}
-              onChange={(e) =>
-                setCommonSettings((prev) => ({
-                  ...prev,
-                  companyId: e.target.value,
-                }))
-              }
-              className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm text-gray-900"
-            >
-              {companies.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-700 mb-1">
@@ -297,6 +283,9 @@ export function BulkReceiptForm({
             </select>
           </div>
         </div>
+        <p className="text-xs text-blue-600 mt-3">
+          ※ 計上会社は登録後、領収書一覧から各領収書ごとに設定できます
+        </p>
       </div>
 
       {/* ファイル追加 */}
@@ -468,7 +457,7 @@ export function BulkReceiptForm({
           onClick={() => router.push("/receipts")}
           className="w-full py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700"
         >
-          一覧に戻る
+          一覧に戻る（計上会社を設定する）
         </button>
       )}
     </div>

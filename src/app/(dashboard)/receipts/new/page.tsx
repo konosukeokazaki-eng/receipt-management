@@ -1,10 +1,8 @@
-import { auth } from "@/lib/auth";
-import { getCompanies, getAccountItems, getUsers } from "@/actions/master-actions";
+import { getAccountItems, getUsers } from "@/actions/master-actions";
 import { ReceiptForm } from "@/components/receipt-form";
 
 export default async function NewReceiptPage() {
-  const [companies, accountItems, users] = await Promise.all([
-    getCompanies(),
+  const [accountItems, users] = await Promise.all([
     getAccountItems(),
     getUsers(),
   ]);
@@ -15,7 +13,6 @@ export default async function NewReceiptPage() {
         領収書登録（単票）
       </h1>
       <ReceiptForm
-        companies={companies}
         accountItems={accountItems}
         users={users}
       />

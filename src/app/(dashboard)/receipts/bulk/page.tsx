@@ -1,9 +1,8 @@
-import { getCompanies, getAccountItems, getUsers } from "@/actions/master-actions";
+import { getAccountItems, getUsers } from "@/actions/master-actions";
 import { BulkReceiptForm } from "@/components/bulk-receipt-form";
 
 export default async function BulkReceiptPage() {
-  const [companies, accountItems, users] = await Promise.all([
-    getCompanies(),
+  const [accountItems, users] = await Promise.all([
     getAccountItems(),
     getUsers(),
   ]);
@@ -14,7 +13,6 @@ export default async function BulkReceiptPage() {
         領収書登録（一括）
       </h1>
       <BulkReceiptForm
-        companies={companies}
         accountItems={accountItems}
         users={users}
       />

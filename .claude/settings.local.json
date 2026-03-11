@@ -6,7 +6,8 @@
       "Bash(npm install:*)",
       "Bash(cd \"C:\\\\Users\\\\user\\\\Documents\\\\ReceiptManagementSystem\" && npx tsc --noEmit 2>&1 | head -50)",
       "Bash(cd \"C:\\\\Users\\\\user\\\\Documents\\\\ReceiptManagementSystem\" && npx tsc --noEmit 2>&1 | head -60)",
-      "Bash(cd \"C:\\\\Users\\\\user\\\\Documents\\\\ReceiptManagementSystem\" && npm run build 2>&1 | tail -40)"
+      "Bash(cd \"C:\\\\Users\\\\user\\\\Documents\\\\ReceiptManagementSystem\" && npm run build 2>&1 | tail -40)",
+      "Bash(cd \"C:\\\\Users\\\\user\\\\Documents\\\\ReceiptManagementSystem\" && npx tsc --noEmit 2>&1)"
     ]
   }
 }

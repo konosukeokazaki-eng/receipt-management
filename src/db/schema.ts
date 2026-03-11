@@ -166,7 +166,6 @@ export const budgets = pgTable(
   {
     id: uuid("id").defaultRandom().primaryKey(),
     companyId: uuid("company_id")
-      .notNull()
       .references(() => companies.id),
     accountItemId: uuid("account_item_id")
       .notNull()

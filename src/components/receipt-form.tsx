@@ -13,17 +13,15 @@ import {
   CheckCircle,
   AlertCircle,
 } from "lucide-react";
-import type { Company, AccountItem, User } from "@/db/schema";
+import type { AccountItem, User } from "@/db/schema";
 
 interface ReceiptFormProps {
-  companies: Company[];
   accountItems: AccountItem[];
   users: User[];
   defaultUserId?: string;
 }
 
 export function ReceiptForm({
-  companies,
   accountItems,
   users,
   defaultUserId,
@@ -46,7 +44,6 @@ export function ReceiptForm({
     amount: "",
     storeName: "",
     purpose: "",
-    companyId: companies[0]?.id || "",
     hasInvoice: false,
     invoiceNumber: "",
     claimantUserId: defaultUserId || users[0]?.id || "",
@@ -72,6 +69,11 @@ export function ReceiptForm({
       formData.append("file", imageFile);
       const result = await analyzeReceipt(formData);
 
+      if ("error" in result) {
+        setError(result.error);
+        return;
+      }
+
       setForm((prev) => ({
         ...prev,
         receiptDate: result.receiptDate || prev.receiptDate,
@@ -80,7 +82,7 @@ export function ReceiptForm({
         hasInvoice: result.hasInvoice,
         invoiceNumber: result.invoiceNumber || prev.invoiceNumber,
       }));
-    } catch (err) {
+    } catch {
       setError("OCR解析に失敗しました。手動で入力するか、再解析してください。");
     } finally {
       setIsAnalyzing(false);
@@ -89,7 +91,7 @@ export function ReceiptForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.companyId || !form.accountItemId || !form.claimantUserId) {
+    if (!form.accountItemId || !form.claimantUserId) {
       setError("必須項目を入力してください");
       return;
     }
@@ -115,7 +117,7 @@ export function ReceiptForm({
           amount: parseInt(form.amount) || 0,
           storeName: form.storeName || null,
           purpose: form.purpose || null,
-          companyId: form.companyId,
+          companyId: null,
           hasInvoice: form.hasInvoice,
           invoiceNumber: form.invoiceNumber || null,
           claimantUserId: form.claimantUserId,
@@ -127,7 +129,7 @@ export function ReceiptForm({
 
       setSuccess(true);
       setTimeout(() => router.push("/receipts"), 1500);
-    } catch (err) {
+    } catch {
       setError("保存に失敗しました。もう一度お試しください。");
     } finally {
       setIsSaving(false);
@@ -140,6 +142,9 @@ export function ReceiptForm({
         <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
         <h2 className="text-xl font-semibold text-gray-900 mb-2">登録完了</h2>
         <p className="text-gray-500">領収書が正常に登録されました</p>
+        <p className="text-sm text-gray-400 mt-2">
+          領収書一覧から計上会社を設定してください
+        </p>
       </div>
     );
   }
@@ -285,7 +290,7 @@ export function ReceiptForm({
               onChange={(e) =>
                 setForm((prev) => ({ ...prev, storeName: e.target.value }))
               }
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
 
@@ -355,48 +360,27 @@ export function ReceiptForm({
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                計上会社<span className="text-red-500">*</span>
+                勘定科目<span className="text-red-500">*</span>
               </label>
               <select
-                value={form.companyId}
+                value={form.accountItemId}
                 onChange={(e) =>
-                  setForm((prev) => ({ ...prev, companyId: e.target.value }))
+                  setForm((prev) => ({
+                    ...prev,
+                    accountItemId: e.target.value,
+                  }))
                 }
                 required
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="">選択してください</option>
-                {companies.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
+                {accountItems.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name}
                   </option>
                 ))}
               </select>
             </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              勘定科目<span className="text-red-500">*</span>
-            </label>
-            <select
-              value={form.accountItemId}
-              onChange={(e) =>
-                setForm((prev) => ({
-                  ...prev,
-                  accountItemId: e.target.value,
-                }))
-              }
-              required
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="">選択してください</option>
-              {accountItems.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-            </select>
           </div>
 
           <div>
@@ -412,7 +396,7 @@ export function ReceiptForm({
                 }))
               }
               required
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="">選択してください</option>
               {users.map((u) => (
@@ -433,10 +417,15 @@ export function ReceiptForm({
                 setForm((prev) => ({ ...prev, purpose: e.target.value }))
               }
               rows={3}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
         </div>
+      </div>
+
+      {/* 計上会社は登録後に一覧から設定 */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-700">
+        ※ 計上会社は登録後、領収書一覧から各領収書ごとに設定できます
       </div>
 
       {/* エラー表示 */}

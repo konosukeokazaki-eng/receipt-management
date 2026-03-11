@@ -1,14 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { deleteReceipt } from "@/actions/receipt-actions";
+import { useRouter } from "next/navigation";
+import { deleteReceipt, assignCompanyToReceipt } from "@/actions/receipt-actions";
 import {
   formatCurrency,
   formatDateJa,
   formatYearMonth,
 } from "@/lib/utils";
-import { Trash2, ExternalLink, Filter, ChevronDown } from "lucide-react";
+import { Trash2, ExternalLink, Filter, ChevronDown, Loader2 } from "lucide-react";
 import type { Company, AccountItem, User, Receipt } from "@/db/schema";
 
 interface ReceiptWithRelations {
@@ -43,6 +43,7 @@ export function ReceiptList({
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState(currentFilters);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [assigningId, setAssigningId] = useState<string | null>(null);
 
   const applyFilters = () => {
     const params = new URLSearchParams();
@@ -67,6 +68,19 @@ export function ReceiptList({
       router.refresh();
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const handleCompanyChange = async (receiptId: string, companyId: string) => {
+    if (!companyId) return;
+    setAssigningId(receiptId);
+    try {
+      await assignCompanyToReceipt(receiptId, companyId);
+      router.refresh();
+    } catch {
+      alert("計上会社の設定に失敗しました");
+    } finally {
+      setAssigningId(null);
     }
   };
 
@@ -103,7 +117,7 @@ export function ReceiptList({
                   onChange={(e) =>
                     setFilters((prev) => ({ ...prev, month: e.target.value }))
                   }
-                  className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm"
+                  className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm text-gray-900"
                 />
               </div>
               <div>
@@ -116,7 +130,7 @@ export function ReceiptList({
                       company: e.target.value,
                     }))
                   }
-                  className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm"
+                  className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm text-gray-900"
                 >
                   <option value="">全社</option>
                   {companies.map((c) => (
@@ -136,7 +150,7 @@ export function ReceiptList({
                       account: e.target.value,
                     }))
                   }
-                  className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm"
+                  className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm text-gray-900"
                 >
                   <option value="">全科目</option>
                   {accountItems.map((a) => (
@@ -153,7 +167,7 @@ export function ReceiptList({
                   onChange={(e) =>
                     setFilters((prev) => ({ ...prev, user: e.target.value }))
                   }
-                  className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm"
+                  className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm text-gray-900"
                 >
                   <option value="">全員</option>
                   {users.map((u) => (
@@ -173,7 +187,7 @@ export function ReceiptList({
                       status: e.target.value,
                     }))
                   }
-                  className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm"
+                  className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm text-gray-900"
                 >
                   <option value="">全て</option>
                   <option value="unsettled">未精算</option>
@@ -210,6 +224,11 @@ export function ReceiptList({
             )}
           </span>
         )}
+        {receipts.filter((r) => !r.receipt.companyId).length > 0 && (
+          <span className="ml-3 text-orange-600 font-medium">
+            ※ 計上会社未設定: {receipts.filter((r) => !r.receipt.companyId).length}件
+          </span>
+        )}
       </div>
 
       {/* テーブル */}
@@ -229,7 +248,7 @@ export function ReceiptList({
                   <th className="px-4 py-3 text-left font-medium">店名</th>
                   <th className="px-4 py-3 text-right font-medium">金額</th>
                   <th className="px-4 py-3 text-left font-medium">勘定科目</th>
-                  <th className="px-4 py-3 text-left font-medium">会社</th>
+                  <th className="px-4 py-3 text-left font-medium">計上会社</th>
                   <th className="px-4 py-3 text-left font-medium">精算者</th>
                   <th className="px-4 py-3 text-center font-medium">INV</th>
                   <th className="px-4 py-3 text-center font-medium">ステータス</th>
@@ -240,7 +259,7 @@ export function ReceiptList({
                 {receipts.map(({ receipt, company, accountItem, claimant }) => (
                   <tr
                     key={receipt.id}
-                    className="hover:bg-gray-50 transition-colors"
+                    className={`hover:bg-gray-50 transition-colors ${!receipt.companyId ? "bg-orange-50/40" : ""}`}
                   >
                     <td className="px-4 py-3 font-mono text-xs text-gray-600">
                       {receipt.receiptNo || "-"}
@@ -260,8 +279,30 @@ export function ReceiptList({
                     <td className="px-4 py-3 text-gray-600">
                       {accountItem?.name || "-"}
                     </td>
-                    <td className="px-4 py-3 text-gray-600">
-                      {company?.name || "-"}
+                    {/* 計上会社: インライン選択 */}
+                    <td className="px-4 py-3">
+                      {assigningId === receipt.id ? (
+                        <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+                      ) : (
+                        <select
+                          value={receipt.companyId || ""}
+                          onChange={(e) =>
+                            handleCompanyChange(receipt.id, e.target.value)
+                          }
+                          className={`border rounded px-2 py-1 text-xs text-gray-900 min-w-24 ${
+                            receipt.companyId
+                              ? "border-gray-200 bg-white"
+                              : "border-orange-300 bg-orange-50 text-orange-700"
+                          }`}
+                        >
+                          <option value="">未設定</option>
+                          {companies.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.name}
+                            </option>
+                          ))}
+                        </select>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-gray-600">
                       {claimant?.displayName || "-"}
