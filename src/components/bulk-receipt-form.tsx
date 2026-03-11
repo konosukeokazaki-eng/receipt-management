@@ -229,7 +229,7 @@ export function BulkReceiptForm({
                   settlementMonth: e.target.value,
                 }))
               }
-              className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm"
+              className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm text-gray-900"
             />
           </div>
           <div>
@@ -244,7 +244,7 @@ export function BulkReceiptForm({
                   companyId: e.target.value,
                 }))
               }
-              className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm"
+              className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm text-gray-900"
             >
               {companies.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -265,7 +265,7 @@ export function BulkReceiptForm({
                   accountItemId: e.target.value,
                 }))
               }
-              className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm"
+              className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm text-gray-900"
             >
               <option value="">個別に設定</option>
               {accountItems.map((a) => (
@@ -287,7 +287,7 @@ export function BulkReceiptForm({
                   claimantUserId: e.target.value,
                 }))
               }
-              className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm"
+              className="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm text-gray-900"
             >
               {users.map((u) => (
                 <option key={u.id} value={u.id}>
@@ -306,7 +306,7 @@ export function BulkReceiptForm({
       >
         <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
         <p className="text-sm text-gray-600">
-          クリックして複数ファイルを選択（最大10枚）
+          クリックして複数ファイルを選択
         </p>
         <p className="text-xs text-gray-400 mt-1">JPG, PNG 対応</p>
         <input
@@ -419,7 +419,7 @@ export function BulkReceiptForm({
                             })
                           }
                           disabled={item.status === "done"}
-                          className="w-full border border-gray-200 rounded px-2 py-1 text-xs"
+                          className="w-full border border-gray-200 rounded px-2 py-1 text-xs text-gray-900"
                         />
                       </div>
                       <div>
@@ -431,7 +431,7 @@ export function BulkReceiptForm({
                             updateItem(item.id, { storeName: e.target.value })
                           }
                           disabled={item.status === "done"}
-                          className="w-full border border-gray-200 rounded px-2 py-1 text-xs"
+                          className="w-full border border-gray-200 rounded px-2 py-1 text-xs text-gray-900"
                         />
                       </div>
                       <div>
@@ -443,7 +443,7 @@ export function BulkReceiptForm({
                             updateItem(item.id, { amount: e.target.value })
                           }
                           disabled={item.status === "done"}
-                          className="w-full border border-gray-200 rounded px-2 py-1 text-xs"
+                          className="w-full border border-gray-200 rounded px-2 py-1 text-xs text-gray-900"
                         />
                       </div>
                     </div>

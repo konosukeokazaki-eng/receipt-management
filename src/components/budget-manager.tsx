@@ -3,13 +3,14 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { upsertBudget } from "@/actions/budget-actions";
-import { formatCurrency, formatYearMonth } from "@/lib/utils";
+import { formatCurrency } from "@/lib/utils";
 import { Save } from "lucide-react";
 import type { Company, AccountItem } from "@/db/schema";
 
 interface BudgetRow {
   company_id: string;
   company_name: string;
+  fiscal_year_end_month: number;
   account_item_id: string;
   account_name: string;
   budget: number;
@@ -21,39 +22,54 @@ interface BudgetManagerProps {
   companies: Company[];
   accountItems: AccountItem[];
   budgetVsActual: BudgetRow[];
-  currentMonth: string;
+  currentFiscalYear: number;
   currentCompanyId?: string;
+}
+
+/** 会計年度の期間文字列を返す (例: "2025-04 〜 2026-03") */
+function getFiscalYearRange(fiscalYear: number, fiscalYearEndMonth: number): string {
+  if (fiscalYearEndMonth === 12) {
+    return `${fiscalYear}-01 〜 ${fiscalYear}-12`;
+  }
+  const startMonth = String(fiscalYearEndMonth + 1).padStart(2, "0");
+  const endMonth = String(fiscalYearEndMonth).padStart(2, "0");
+  return `${fiscalYear}-${startMonth} 〜 ${fiscalYear + 1}-${endMonth}`;
+}
+
+/** 選択可能な会計年度リストを生成 */
+function getFiscalYearOptions(currentYear: number): number[] {
+  return [currentYear - 2, currentYear - 1, currentYear, currentYear + 1];
 }
 
 export function BudgetManager({
   companies,
   accountItems,
   budgetVsActual,
-  currentMonth,
+  currentFiscalYear,
   currentCompanyId,
 }: BudgetManagerProps) {
   const router = useRouter();
-  const [month, setMonth] = useState(currentMonth);
+  const [fiscalYear, setFiscalYear] = useState(currentFiscalYear);
   const [companyId, setCompanyId] = useState(currentCompanyId || "");
   const [editingBudgets, setEditingBudgets] = useState<Record<string, string>>({});
   const [isSaving, setIsSaving] = useState(false);
 
   const applyFilters = () => {
     const params = new URLSearchParams();
-    params.set("month", month);
+    params.set("year", String(fiscalYear));
     if (companyId) params.set("company", companyId);
     router.push(`/budgets?${params.toString()}`);
   };
 
-  const getBudgetKey = (companyId: string, accountItemId: string) =>
-    `${companyId}_${accountItemId}`;
+  const getBudgetKey = (cId: string, accountItemId: string) =>
+    `${cId}_${accountItemId}`;
 
   const handleBudgetChange = (
-    companyId: string,
+    cId: string,
     accountItemId: string,
     value: string
   ) => {
-    const key = getBudgetKey(companyId, accountItemId);
+    const key = getBudgetKey(cId, accountItemId);
     setEditingBudgets((prev) => ({ ...prev, [key]: value }));
   };
 
@@ -68,7 +84,7 @@ export function BudgetManager({
         await upsertBudget({
           companyId: cId,
           accountItemId: aId,
-          yearMonth: month,
+          fiscalYear,
           amount,
         });
       }
@@ -89,31 +105,37 @@ export function BudgetManager({
     {}
   );
 
-  // 予算未設定の科目を追加
   const displayCompanies = companyId
     ? companies.filter((c) => c.id === companyId)
     : companies;
+
+  const fiscalYearOptions = getFiscalYearOptions(currentFiscalYear);
 
   return (
     <div className="space-y-4">
       {/* フィルター */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
-        <div className="flex gap-3 items-end">
+        <div className="flex gap-3 items-end flex-wrap">
           <div>
-            <label className="block text-xs text-gray-500 mb-1">対象月</label>
-            <input
-              type="month"
-              value={month}
-              onChange={(e) => setMonth(e.target.value)}
-              className="border border-gray-200 rounded px-2 py-1.5 text-sm"
-            />
+            <label className="block text-xs text-gray-500 mb-1">会計年度</label>
+            <select
+              value={fiscalYear}
+              onChange={(e) => setFiscalYear(parseInt(e.target.value))}
+              className="border border-gray-200 rounded px-2 py-1.5 text-sm text-gray-900"
+            >
+              {fiscalYearOptions.map((y) => (
+                <option key={y} value={y}>
+                  {y}年度
+                </option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="block text-xs text-gray-500 mb-1">会社</label>
             <select
               value={companyId}
               onChange={(e) => setCompanyId(e.target.value)}
-              className="border border-gray-200 rounded px-2 py-1.5 text-sm"
+              className="border border-gray-200 rounded px-2 py-1.5 text-sm text-gray-900"
             >
               <option value="">全社</option>
               {companies.map((c) => (
@@ -149,6 +171,8 @@ export function BudgetManager({
       {displayCompanies.map((company) => {
         const rows = grouped[company.id] || [];
         const existingAccountIds = new Set(rows.map((r) => r.account_item_id));
+        const fiscalYearEndMonth = company.fiscalYearEndMonth;
+        const rangeLabel = getFiscalYearRange(fiscalYear, fiscalYearEndMonth);
 
         // 全勘定科目について行を生成
         const allRows = [
@@ -158,6 +182,7 @@ export function BudgetManager({
             .map((a) => ({
               company_id: company.id,
               company_name: company.name,
+              fiscal_year_end_month: fiscalYearEndMonth,
               account_item_id: a.id,
               account_name: a.name,
               budget: 0,
@@ -178,7 +203,10 @@ export function BudgetManager({
               <h2 className="font-semibold text-gray-900">
                 {company.name}
                 <span className="ml-3 text-sm font-normal text-gray-500">
-                  {formatYearMonth(month)}
+                  {fiscalYear}年度
+                </span>
+                <span className="ml-2 text-xs font-normal text-gray-400">
+                  （{rangeLabel}）
                 </span>
               </h2>
             </div>
@@ -223,7 +251,7 @@ export function BudgetManager({
                           }
                           placeholder="0"
                           min="0"
-                          className="w-32 border border-gray-200 rounded px-2 py-1 text-sm text-right"
+                          className="w-32 border border-gray-200 rounded px-2 py-1 text-sm text-right text-gray-900"
                         />
                       </td>
                       <td className="px-4 py-2.5 text-right font-medium text-gray-900">
@@ -281,6 +309,12 @@ export function BudgetManager({
           </div>
         );
       })}
+
+      {displayCompanies.length === 0 && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 text-center text-gray-400">
+          会社が登録されていません
+        </div>
+      )}
     </div>
   );
 }

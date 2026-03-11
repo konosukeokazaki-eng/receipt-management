@@ -4,17 +4,20 @@ import { getBudgetVsActual, getAccountItemBreakdown } from "@/actions/budget-act
 import { db, receipts } from "@/db";
 import { eq, and } from "drizzle-orm";
 import { getCurrentMonth, formatCurrency, formatYearMonth } from "@/lib/utils";
+import { getFiscalYear } from "@/lib/receipt-no";
 import { DashboardCharts } from "@/components/dashboard-charts";
 
 export default async function DashboardPage() {
   const session = await auth();
   const currentMonth = getCurrentMonth();
+  // 3月決算ベースで現在の会計年度を算出（ダッシュボード表示用）
+  const currentFiscalYear = getFiscalYear(currentMonth, 3);
 
   // 今月の経費合計（会社別）
   const monthlyTotals = await getMonthlyTotal(currentMonth);
 
-  // 予算消化状況
-  const budgetVsActual = await getBudgetVsActual(currentMonth);
+  // 予算消化状況（当会計年度）
+  const budgetVsActual = await getBudgetVsActual(currentFiscalYear);
 
   // 未精算件数
   const unsettledCount = await db

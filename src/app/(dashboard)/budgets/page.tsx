@@ -1,6 +1,7 @@
-import { getBudgetVsActual, getBudgets } from "@/actions/budget-actions";
+import { getBudgetVsActual } from "@/actions/budget-actions";
 import { getCompanies, getAccountItems } from "@/actions/master-actions";
 import { BudgetManager } from "@/components/budget-manager";
+import { getFiscalYear } from "@/lib/receipt-no";
 import { getCurrentMonth } from "@/lib/utils";
 
 export default async function BudgetsPage({
@@ -9,13 +10,17 @@ export default async function BudgetsPage({
   searchParams: Promise<{ [key: string]: string | undefined }>;
 }) {
   const params = await searchParams;
-  const currentMonth = params.month || getCurrentMonth();
+  const currentMonth = getCurrentMonth();
+
+  // デフォルトは3月決算（日本で最も一般的）で現在の会計年度を算出
+  const defaultFiscalYear = getFiscalYear(currentMonth, 3);
+  const fiscalYear = params.year ? parseInt(params.year) : defaultFiscalYear;
   const companyId = params.company;
 
   const [companies, accountItems, budgetVsActual] = await Promise.all([
     getCompanies(),
     getAccountItems(),
-    getBudgetVsActual(currentMonth, companyId),
+    getBudgetVsActual(fiscalYear, companyId),
   ]);
 
   return (
@@ -25,7 +30,7 @@ export default async function BudgetsPage({
         companies={companies}
         accountItems={accountItems}
         budgetVsActual={budgetVsActual}
-        currentMonth={currentMonth}
+        currentFiscalYear={fiscalYear}
         currentCompanyId={companyId}
       />
     </div>

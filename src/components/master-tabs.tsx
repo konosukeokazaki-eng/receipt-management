@@ -125,7 +125,7 @@ function CompanyMaster({ companies }: { companies: Company[] }) {
                 type="text"
                 value={form.name}
                 onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-                className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm"
+                className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm text-gray-900"
               />
             </div>
             <div>
@@ -136,7 +136,7 @@ function CompanyMaster({ companies }: { companies: Company[] }) {
                 onChange={(e) => setForm((p) => ({ ...p, code: e.target.value.toUpperCase() }))}
                 maxLength={5}
                 placeholder="A"
-                className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm font-mono"
+                className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm font-mono text-gray-900"
               />
             </div>
             <div>
@@ -144,7 +144,7 @@ function CompanyMaster({ companies }: { companies: Company[] }) {
               <select
                 value={form.fiscalYearEndMonth}
                 onChange={(e) => setForm((p) => ({ ...p, fiscalYearEndMonth: parseInt(e.target.value) }))}
-                className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm"
+                className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm text-gray-900"
               >
                 {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
                   <option key={m} value={m}>{m}月</option>
@@ -157,7 +157,7 @@ function CompanyMaster({ companies }: { companies: Company[] }) {
                 type="text"
                 value={form.driveParentFolderId}
                 onChange={(e) => setForm((p) => ({ ...p, driveParentFolderId: e.target.value }))}
-                className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm font-mono text-xs"
+                className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm font-mono text-xs text-gray-900"
               />
             </div>
           </div>
@@ -279,7 +279,7 @@ function AccountItemMaster({ accountItems }: { accountItems: AccountItem[] }) {
                 type="text"
                 value={form.name}
                 onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-                className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm"
+                className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm text-gray-900"
               />
             </div>
             <div>
@@ -289,7 +289,7 @@ function AccountItemMaster({ accountItems }: { accountItems: AccountItem[] }) {
                 value={form.yayoiName}
                 onChange={(e) => setForm((p) => ({ ...p, yayoiName: e.target.value }))}
                 placeholder="弥生会計での科目名"
-                className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm"
+                className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm text-gray-900"
               />
             </div>
             <div>
@@ -297,7 +297,7 @@ function AccountItemMaster({ accountItems }: { accountItems: AccountItem[] }) {
               <select
                 value={form.taxCategory}
                 onChange={(e) => setForm((p) => ({ ...p, taxCategory: e.target.value as "taxable" | "exempt" }))}
-                className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm"
+                className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm text-gray-900"
               >
                 <option value="taxable">課税</option>
                 <option value="exempt">対象外</option>
@@ -309,7 +309,7 @@ function AccountItemMaster({ accountItems }: { accountItems: AccountItem[] }) {
                 type="number"
                 value={form.sortOrder}
                 onChange={(e) => setForm((p) => ({ ...p, sortOrder: parseInt(e.target.value) || 0 }))}
-                className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm"
+                className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm text-gray-900"
               />
             </div>
           </div>
@@ -442,7 +442,7 @@ function UserMaster({ users }: { users: User[] }) {
                       type="text"
                       value={editForm.displayName}
                       onChange={(e) => setEditForm((p) => ({ ...p, displayName: e.target.value }))}
-                      className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm"
+                      className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm text-gray-900"
                     />
                   </div>
                   <div>
@@ -451,7 +451,7 @@ function UserMaster({ users }: { users: User[] }) {
                       type="text"
                       value={editForm.bankName}
                       onChange={(e) => setEditForm((p) => ({ ...p, bankName: e.target.value }))}
-                      className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm"
+                      className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm text-gray-900"
                     />
                   </div>
                   <div>
@@ -460,7 +460,7 @@ function UserMaster({ users }: { users: User[] }) {
                       type="text"
                       value={editForm.bankBranch}
                       onChange={(e) => setEditForm((p) => ({ ...p, bankBranch: e.target.value }))}
-                      className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm"
+                      className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm text-gray-900"
                     />
                   </div>
                   <div>
@@ -469,7 +469,7 @@ function UserMaster({ users }: { users: User[] }) {
                       type="text"
                       value={editForm.accountNumber}
                       onChange={(e) => setEditForm((p) => ({ ...p, accountNumber: e.target.value }))}
-                      className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm"
+                      className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm text-gray-900"
                     />
                   </div>
                   <div>
@@ -478,7 +478,7 @@ function UserMaster({ users }: { users: User[] }) {
                       type="text"
                       value={editForm.accountHolder}
                       onChange={(e) => setEditForm((p) => ({ ...p, accountHolder: e.target.value }))}
-                      className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm"
+                      className="w-full border border-gray-200 rounded px-2 py-1.5 text-sm text-gray-900"
                     />
                   </div>
                 </div>

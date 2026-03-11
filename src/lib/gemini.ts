@@ -14,7 +14,7 @@ export async function analyzeReceiptImage(
   imageBase64: string,
   mimeType: string = "image/jpeg"
 ): Promise<OcrResult> {
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
   const prompt = `この領収書・レシート画像から以下の情報をJSON形式で抽出してください。
 抽出する情報：

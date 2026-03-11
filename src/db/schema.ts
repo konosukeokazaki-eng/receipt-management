@@ -171,7 +171,7 @@ export const budgets = pgTable(
     accountItemId: uuid("account_item_id")
       .notNull()
       .references(() => accountItems.id),
-    yearMonth: char("year_month", { length: 7 }).notNull(), // YYYY-MM
+    fiscalYear: integer("fiscal_year").notNull(), // 会計年度 (例: 2025)
     amount: integer("amount").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
@@ -181,10 +181,10 @@ export const budgets = pgTable(
       .notNull(),
   },
   (table) => ({
-    uniqueBudget: unique("budgets_company_account_month_unique").on(
+    uniqueBudget: unique("budgets_company_account_year_unique").on(
       table.companyId,
       table.accountItemId,
-      table.yearMonth
+      table.fiscalYear
     ),
   })
 );

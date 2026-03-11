@@ -12,7 +12,7 @@ import { z } from "zod";
 const BudgetSchema = z.object({
   companyId: z.string().uuid(),
   accountItemId: z.string().uuid(),
-  yearMonth: z.string().regex(/^\d{4}-\d{2}$/),
+  fiscalYear: z.number().int().min(2000).max(2100),
   amount: z.number().int().min(0),
 });
 
@@ -30,7 +30,7 @@ export async function upsertBudget(data: z.infer<typeof BudgetSchema>) {
       updatedAt: new Date(),
     })
     .onConflictDoUpdate({
-      target: [budgets.companyId, budgets.accountItemId, budgets.yearMonth],
+      target: [budgets.companyId, budgets.accountItemId, budgets.fiscalYear],
       set: {
         amount: validated.amount,
         updatedAt: new Date(),
@@ -43,21 +43,18 @@ export async function upsertBudget(data: z.infer<typeof BudgetSchema>) {
 }
 
 // ─────────────────────────────────────────────
-// 予算実績集計
+// 予算実績集計（会計年度ベース）
 // ─────────────────────────────────────────────
-export async function getBudgetVsActual(yearMonth: string, companyId?: string) {
+export async function getBudgetVsActual(fiscalYear: number, companyId?: string) {
   const session = await auth();
   if (!session?.user) throw new Error("認証が必要です");
 
-  const budgetConditions = [eq(budgets.yearMonth, yearMonth)];
-  if (companyId) {
-    budgetConditions.push(eq(budgets.companyId, companyId));
-  }
-
+  // 各会社の決算月に基づいて会計年度の期間を計算して集計
   const result = await db.execute(sql`
     SELECT
       c.id AS company_id,
       c.name AS company_name,
+      c.fiscal_year_end_month,
       a.id AS account_item_id,
       a.name AS account_name,
       COALESCE(b.amount, 0) AS budget,
@@ -72,16 +69,28 @@ export async function getBudgetVsActual(yearMonth: string, companyId?: string) {
     LEFT JOIN receipts r
       ON r.company_id = b.company_id
       AND r.account_item_id = b.account_item_id
-      AND r.settlement_month = b.year_month
-    WHERE b.year_month = ${yearMonth}
+      AND r.settlement_month >= (
+        b.fiscal_year::text || '-' ||
+        CASE WHEN c.fiscal_year_end_month = 12 THEN '01'
+             ELSE LPAD((c.fiscal_year_end_month + 1)::text, 2, '0')
+        END
+      )
+      AND r.settlement_month <= (
+        CASE WHEN c.fiscal_year_end_month = 12
+             THEN b.fiscal_year::text || '-12'
+             ELSE (b.fiscal_year + 1)::text || '-' || LPAD(c.fiscal_year_end_month::text, 2, '0')
+        END
+      )
+    WHERE b.fiscal_year = ${fiscalYear}
     ${companyId ? sql`AND b.company_id = ${companyId}` : sql``}
-    GROUP BY c.id, c.name, a.id, a.name, b.amount
+    GROUP BY c.id, c.name, c.fiscal_year_end_month, a.id, a.name, b.amount
     ORDER BY c.name, a.name
   `);
 
   return result.rows as {
     company_id: string;
     company_name: string;
+    fiscal_year_end_month: number;
     account_item_id: string;
     account_name: string;
     budget: number;
@@ -122,11 +131,11 @@ export async function getAccountItemBreakdown(
 // ─────────────────────────────────────────────
 // 予算一覧取得
 // ─────────────────────────────────────────────
-export async function getBudgets(yearMonth: string, companyId?: string) {
+export async function getBudgets(fiscalYear: number, companyId?: string) {
   const session = await auth();
   if (!session?.user) throw new Error("認証が必要です");
 
-  const conditions = [eq(budgets.yearMonth, yearMonth)];
+  const conditions = [eq(budgets.fiscalYear, fiscalYear)];
   if (companyId) {
     conditions.push(eq(budgets.companyId, companyId));
   }
