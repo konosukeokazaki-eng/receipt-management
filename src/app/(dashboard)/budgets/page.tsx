@@ -17,11 +17,18 @@ export default async function BudgetsPage({
   const fiscalYear = params.year ? parseInt(params.year) : defaultFiscalYear;
   const companyId = params.company;
 
-  const [companies, accountItems, budgetVsActual] = await Promise.all([
+  const [companies, accountItems] = await Promise.all([
     getCompanies(),
     getAccountItems(),
-    getBudgetVsActual(fiscalYear, companyId),
   ]);
+
+  // DBマイグレーション未実施時はエラーをキャッチして空配列で続行
+  let budgetVsActual: Awaited<ReturnType<typeof getBudgetVsActual>> = [];
+  try {
+    budgetVsActual = await getBudgetVsActual(fiscalYear, companyId);
+  } catch {
+    // migration pending
+  }
 
   return (
     <div className="space-y-4">

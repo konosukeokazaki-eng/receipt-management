@@ -16,8 +16,13 @@ export default async function DashboardPage() {
   // 今月の経費合計（会社別）
   const monthlyTotals = await getMonthlyTotal(currentMonth);
 
-  // 予算消化状況（当会計年度）
-  const budgetVsActual = await getBudgetVsActual(currentFiscalYear);
+  // 予算消化状況（当会計年度）※DBマイグレーション未実施時はスキップ
+  let budgetVsActual: Awaited<ReturnType<typeof getBudgetVsActual>> = [];
+  try {
+    budgetVsActual = await getBudgetVsActual(currentFiscalYear);
+  } catch {
+    // マイグレーション未実施の場合は空配列で続行
+  }
 
   // 未精算件数
   const unsettledCount = await db
