@@ -32,8 +32,9 @@ export async function analyzeReceipt(
 
     return await analyzeReceiptImage(base64, mimeType);
   } catch (err) {
-    console.error("OCR error:", err);
-    return { error: "OCR解析に失敗しました" };
+    const message = err instanceof Error ? err.message : "OCR解析に失敗しました";
+    console.error("OCR error:", message);
+    return { error: message };
   }
 }
 

@@ -1,7 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-
 export interface OcrResult {
   receiptDate: string | null; // YYYY-MM-DD
   storeName: string | null;
@@ -14,7 +12,16 @@ export async function analyzeReceiptImage(
   imageBase64: string,
   mimeType: string = "image/jpeg"
 ): Promise<OcrResult> {
-  const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error(
+      "GEMINI_API_KEY が設定されていません。Vercel の環境変数を確認してください。"
+    );
+  }
+
+  // API キーが設定されている場合のみインスタンスを生成（モジュール初期化時ではなく呼び出し時に生成）
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
   const prompt = `この領収書・レシート画像から以下の情報をJSON形式で抽出してください。
 抽出する情報：
