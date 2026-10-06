@@ -16,7 +16,10 @@
     .actions { display:flex; gap:10px; align-items:center; justify-content:center; margin:14px 0; }
     #shutter { width:76px; height:76px; border-radius:50%; border:5px solid #fff; background:#e33; }
     #shutter:disabled { opacity:.35; }
-    .pick { padding:12px 14px; border-radius:8px; background:#333; color:#fff; font-size:14px; }
+    .pick { display:block; flex:1; text-align:center; padding:18px 10px; border-radius:10px; background:#333; color:#fff; font-size:16px; }
+    .pick.main { background:#1f5fbf; font-weight:700; }
+    .pick small { display:block; font-size:12px; font-weight:400; color:#cfd8e6; margin-top:2px; }
+    .hint { color:#999; font-size:12px; text-align:center; margin:-4px 0 10px; }
     .count { text-align:center; color:#bbb; margin-bottom:8px; }
     .list div { display:flex; justify-content:space-between; gap:8px; padding:8px 10px; border-bottom:1px solid #333; font-size:13px; }
     .list .ng { color:#ff8a80; } .list .ok { color:#8fe3b0; }
@@ -26,11 +29,13 @@
 <body>
 <div class="cam">
   <div class="users" id="users"></div>
-  <div class="view"><video id="video" playsinline autoplay muted></video><div class="msg" id="viewMsg">カメラを起動しています…</div></div>
+  <div class="view" id="view"><video id="video" playsinline autoplay muted></video><div class="msg" id="viewMsg">カメラを起動しています…</div></div>
+  <div class="actions" id="shutterRow"><button id="shutter" disabled aria-label="撮影"></button></div>
   <div class="actions">
-    <button id="shutter" disabled aria-label="撮影"></button>
-    <label class="pick">写真を選ぶ<input id="file" type="file" accept="image/*" capture="environment" multiple hidden></label>
+    <label class="pick main">撮影する<small>1枚ずつ</small><input id="shoot" type="file" accept="image/*" capture="environment" hidden></label>
+    <label class="pick">写真をまとめて選ぶ<small>撮影済みの写真から</small><input id="file" type="file" accept="image/*" multiple hidden></label>
   </div>
+  <div class="hint" id="hint"></div>
   <div class="count" id="count">利用者を選んでから撮影してください</div>
   <div class="list" id="list"></div>
 </div>
@@ -93,21 +98,33 @@ $('shutter').onclick = function () {
   if (!user || !v.videoWidth) return;
   add(shrink(v, v.videoWidth, v.videoHeight), user);
 };
-$('file').onchange = function (e) {
-  if (!user) { alert('先に利用者を選んでください'); e.target.value = ''; return; }
+// 選んだ写真を撮影した順（古い順）に1枚ずつ読み込んで追加する
+function onPick(e) {
+  if (!user) { $('hint').textContent = '先に利用者を選んでください'; e.target.value = ''; return; }
   var who = user;
-  Array.prototype.forEach.call(e.target.files, function (f) {
-    var img = new Image();
-    img.onload = function () { add(shrink(img, img.naturalWidth, img.naturalHeight), who); URL.revokeObjectURL(img.src); };
-    img.src = URL.createObjectURL(f);
-  });
+  var files = Array.prototype.slice.call(e.target.files).sort(function (a, b) { return a.lastModified - b.lastModified; });
   e.target.value = '';
-};
+  var next = function () {
+    var f = files.shift();
+    if (!f) return;
+    var img = new Image();
+    img.onload = function () { add(shrink(img, img.naturalWidth, img.naturalHeight), who); URL.revokeObjectURL(img.src); next(); };
+    img.onerror = function () { $('hint').textContent = '読み込めない写真がありました：' + f.name; URL.revokeObjectURL(img.src); next(); };
+    img.src = URL.createObjectURL(f);
+  };
+  next();
+}
+$('file').onchange = onPick; $('shoot').onchange = onPick;
+// この画面の中でカメラを使えないときは、プレビューを隠してボタンだけにする
+function noLiveCamera(reason) {
+  $('view').classList.add('hide'); $('shutterRow').classList.add('hide');
+  $('hint').textContent = 'この画面の中ではカメラを表示できないため、「撮影する」でスマホのカメラを開きます。' + (reason ? '（' + reason + '）' : '');
+}
 function startCamera() {
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { $('viewMsg').textContent = 'この画面ではカメラを起動できません。「写真を選ぶ」から撮影してください。'; return; }
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { noLiveCamera(''); return; }
   navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1440 } }, audio: false }).then(function (stream) {
     $('video').srcObject = stream; $('viewMsg').classList.add('hide'); refresh();
-  }).catch(function () { $('viewMsg').textContent = 'カメラを起動できませんでした。「写真を選ぶ」から撮影してください。'; });
+  }).catch(function (err) { noLiveCamera(err && err.name); });
 }
 window.onbeforeunload = function () { if (busy || queue.length) return '保存が終わっていません'; };
 try { var saved = localStorage.getItem('receiptUser'); if (saved && INIT.users.indexOf(saved) >= 0) user = saved; } catch (e) {}
