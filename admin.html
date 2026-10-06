@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <base target="_top">
+  <?!= include('Stylesheet'); ?>
+</head>
+<body>
+<div class="top">
+  <h1>領収書管理</h1>
+  <div class="tabs">
+    <button class="tab on" data-tab="settle">精算</button>
+    <button class="tab" data-tab="ledger">計上・残金</button>
+    <button class="tab" data-tab="csv">CSV出力</button>
+    <button class="tab" data-tab="quality">科目の判定</button>
+  </div>
+  <div class="spacer"></div>
+  <a class="btn" id="sheetLink" target="_blank">スプレッドシートを開く</a>
+  <a class="btn" href="<?!= selfUrl ?>?page=camera" target="_blank">撮影アプリ</a>
+  <button class="btn" id="reload">更新</button>
+</div>
+<div class="wrap">
+  <div id="loading" class="card">読み込んでいます…</div>
+  <div id="error" class="alert hide"></div>
+
+  <section id="tab-settle" class="hide">
+    <div class="card">
+      <div class="row"><h2 style="margin:0">精算額</h2><select id="settleMonth"></select><span class="note">精算月ごとに、どの会社からいくら精算するか</span></div>
+      <div id="settleAlert"></div>
+      <div class="scroll" id="settleTable"></div>
+    </div>
+    <div class="card">
+      <div class="row"><h2 style="margin:0">Slackに送る文面</h2><button class="btn primary" id="copySlack">コピー</button><span class="note" id="copyMsg"></span></div>
+      <textarea id="slackText" readonly></textarea>
+    </div>
+  </section>
+
+  <section id="tab-ledger" class="hide">
+    <div class="card">
+      <div class="row"><h2 style="margin:0">会社別の計上額</h2><select id="ledgerYear"></select><span class="note">領収書日付で集計。期首月が未設定の会社は1月始まりで表示</span></div>
+      <div class="scroll" id="ledgerSummary"></div>
+    </div>
+    <div class="card">
+      <div class="row"><h2 style="margin:0">科目別・月別</h2><select id="ledgerCompany"></select></div>
+      <div class="scroll" id="ledgerDetail"></div>
+    </div>
+  </section>
+
+  <section id="tab-csv" class="hide">
+    <div class="card">
+      <div class="row"><h2 style="margin:0">弥生会計用CSV</h2><select id="csvMonth"></select><button class="btn primary" id="csvBtn">ZIPをダウンロード</button></div>
+      <p class="note">選んだ精算月の、確定済みの領収書を会社別のCSV（Shift_JIS）にしてZIPにまとめます。</p>
+      <div id="csvResult"></div>
+    </div>
+  </section>
+
+  <section id="tab-quality" class="hide">
+    <div class="card">
+      <h2>自動判定が当たった割合</h2>
+      <p class="note">確定した領収書のうち、自動で入った科目を直さずに確定した割合です。精算月ごとに表示します。</p>
+      <div class="scroll" id="qualityTable"></div>
+    </div>
+  </section>
+</div>
+<script>
+var D = null;
+var R = { no:0, date:1, month:2, company:3, user:4, account:5, amount:6, status:7, auto:8, basis:9, warn:10 };
+function $(id) { return document.getElementById(id); }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function yen(n) { return (Math.round(n) || 0).toLocaleString('ja-JP'); }
+function showError(e) { $('error').textContent = (e && e.message) || String(e); $('error').classList.remove('hide'); $('loading').classList.add('hide'); }
+
+function load() {
+  $('loading').classList.remove('hide'); $('error').classList.add('hide');
+  google.script.run.withSuccessHandler(function (d) { D = d; $('loading').classList.add('hide'); init(); }).withFailureHandler(showError).api_getData();
+}
+
+function months() {
+  var s = {}; D.rows.forEach(function (r) { if (r[R.month]) s[r[R.month]] = 1; });
+  return Object.keys(s).sort().reverse();
+}
+function fillSelect(el, items, keep) {
+  var cur = keep ? el.value : '';
+  el.innerHTML = items.map(function (i) { return '<option value="' + esc(i.value) + '">' + esc(i.label) + '</option>'; }).join('');
+  if (cur && items.some(function (i) { return i.value === cur; })) el.value = cur;
+}
+function monthLabel(m) { return m.substring(0, 4) + '年' + parseInt(m.substring(5), 10) + '月'; }
+
+function init() {
+  $('sheetLink').href = D.sheetUrl;
+  var ms = months().map(function (m) { return { value: m, label: monthLabel(m) }; });
+  fillSelect($('settleMonth'), ms, true); fillSelect($('csvMonth'), ms, true);
+  var years = {}; D.rows.forEach(function (r) { if (r[R.date]) { var y = +r[R.date].substring(0, 4); years[y] = 1; years[y - 1] = 1; } });
+  var ys = Object.keys(years).sort().reverse();
+  var now = new Date();
+  fillSelect($('ledgerYear'), ys.map(function (y) { return { value: y, label: y + '年に始まる期' }; }), true);
+  if (!$('ledgerYear').dataset.set && ys.length) { $('ledgerYear').dataset.set = '1'; }
+  fillSelect($('ledgerCompany'), D.companies.map(function (c) { return { value: c.name, label: c.name }; }), true);
+  renderSettle(); renderLedger(); renderQuality();
+  showTab(document.querySelector('.tab.on').dataset.tab);
+}
+
+function showTab(name) {
+  ['settle', 'ledger', 'csv', 'quality'].forEach(function (t) { $('tab-' + t).classList.toggle('hide', t !== name); });
+  Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (b) { b.classList.toggle('on', b.dataset.tab === name); });
+}
+
+// ---------- 精算 ----------
+function renderSettle() {
+  var m = $('settleMonth').value;
+  if (!m) { $('settleTable').innerHTML = '<p class="note">精算月が入力された領収書がまだありません。</p>'; $('slackText').value = ''; return; }
+  var rows = D.rows.filter(function (r) { return r[R.month] === m; });
+  var users = D.users.slice();
+  rows.forEach(function (r) { if (r[R.user] && users.indexOf(r[R.user]) < 0) users.push(r[R.user]); });
+  var noUser = rows.filter(function (r) { return !r[R.user]; }), noCompany = rows.filter(function (r) { return !r[R.company]; });
+  var open = rows.filter(function (r) { return r[R.status] !== '確定'; });
+  var sum = {}, colTotal = {}, grand = 0;
+  rows.forEach(function (r) {
+    if (!r[R.company] || !r[R.user]) return;
+    var c = sum[r[R.company]] || (sum[r[R.company]] = {});
+    c[r[R.user]] = (c[r[R.user]] || 0) + r[R.amount];
+    colTotal[r[R.user]] = (colTotal[r[R.user]] || 0) + r[R.amount]; grand += r[R.amount];
+  });
+  var companies = D.companies.map(function (c) { return c.name; }).filter(function (c) { return sum[c]; });
+  Object.keys(sum).forEach(function (c) { if (companies.indexOf(c) < 0) companies.push(c); });
+  var alerts = [];
+  if (open.length) alerts.push('未確定の領収書が ' + open.length + ' 件あります。金額は未確定の分も含んでいます。');
+  if (noCompany.length) alerts.push('計上会社が未入力の領収書が ' + noCompany.length + ' 件（' + yen(noCompany.reduce(function (a, r) { return a + r[R.amount]; }, 0)) + '円）あり、下の表に含まれていません。');
+  if (noUser.length) alerts.push('利用者が未入力の領収書が ' + noUser.length + ' 件あり、下の表に含まれていません。');
+  $('settleAlert').innerHTML = alerts.map(function (a) { return '<div class="alert">' + esc(a) + '</div>'; }).join('');
+  var h = '<table><tr><th>計上会社</th>' + users.map(function (u) { return '<th>' + esc(u) + '</th>'; }).join('') + '<th>合計</th></tr>';
+  companies.forEach(function (c) {
+    var t = 0;
+    h += '<tr><td>' + esc(c) + '</td>' + users.map(function (u) { var v = sum[c][u] || 0; t += v; return '<td>' + (v ? yen(v) : '') + '</td>'; }).join('') + '<td>' + yen(t) + '</td></tr>';
+  });
+  h += '<tr class="total"><td>合計</td>' + users.map(function (u) { return '<td>' + yen(colTotal[u] || 0) + '</td>'; }).join('') + '<td>' + yen(grand) + '</td></tr></table>';
+  $('settleTable').innerHTML = companies.length ? h : '<p class="note">この精算月の領収書はまだありません。</p>';
+  var lines = [];
+  if (D.slackTo) lines.push(D.slackTo);
+  lines.push(monthLabel(m) + '分の経費精算額です。', '');
+  users.forEach(function (u) {
+    if (!colTotal[u]) return;
+    lines.push('【' + u + '】');
+    companies.forEach(function (c) { if (sum[c][u]) lines.push(c + '：' + yen(sum[c][u]) + '円'); });
+    lines.push('合計：' + yen(colTotal[u]) + '円', '');
+  });
+  lines.push('総合計：' + yen(grand) + '円');
+  $('slackText').value = companies.length ? lines.join('\n') : '';
+}
+
+// ---------- 計上・残金 ----------
+function periodOf(company, year) {
+  var sm = company.startMonth || 1;
+  var from = year + '/' + (sm < 10 ? '0' : '') + sm + '/01';
+  var ey = sm === 1 ? year : year + 1, em = sm === 1 ? 12 : sm - 1;
+  var to = ey + '/' + (em < 10 ? '0' : '') + em + '/31';
+  var label = (company.baseTerm && company.baseStartYear) ? '第' + (company.baseTerm + (year - company.baseStartYear)) + '期' : year + '年' + sm + '月〜' + ey + '年' + em + '月';
+  var ms = [];
+  for (var i = 0; i < 12; i++) { var mm = (sm - 1 + i) % 12 + 1, yy = year + (sm - 1 + i >= 12 ? 1 : 0); ms.push(yy + '/' + (mm < 10 ? '0' : '') + mm); }
+  return { from: from, to: to, label: label, months: ms };
+}
+function renderLedger() {
+  var year = +$('ledgerYear').value;
+  if (!year) { $('ledgerSummary').innerHTML = '<p class="note">領収書がまだありません。</p>'; $('ledgerDetail').innerHTML = ''; return; }
+  var h = '<table><tr><th>計上会社</th><th>期</th><th>計上額</th><th>年間予算</th><th>残金</th><th style="text-align:left">消化</th></tr>';
+  D.companies.forEach(function (c) {
+    var p = periodOf(c, year), total = 0;
+    D.rows.forEach(function (r) { if (r[R.company] === c.name && r[R.date] >= p.from && r[R.date] <= p.to) total += r[R.amount]; });
+    var pct = c.budget ? Math.min(100, Math.round(total / c.budget * 100)) : 0;
+    h += '<tr><td>' + esc(c.name) + '</td><td>' + esc(p.label) + '</td><td>' + yen(total) + '</td><td>' + (c.budget ? yen(c.budget) : '未設定') + '</td><td>' + (c.budget ? yen(c.budget - total) : '') + '</td>'
+      + '<td style="text-align:left">' + (c.budget ? '<div class="bar' + (total > c.budget ? ' over' : '') + '"><i style="width:' + pct + '%"></i></div>' : '') + '</td></tr>';
+  });
+  $('ledgerSummary').innerHTML = h + '</table>';
+  var c = D.companies.filter(function (x) { return x.name === $('ledgerCompany').value; })[0];
+  if (!c) { $('ledgerDetail').innerHTML = ''; return; }
+  var p = periodOf(c, year), acc = {}, colT = {}, grand = 0;
+  D.rows.forEach(function (r) {
+    if (r[R.company] !== c.name || r[R.date] < p.from || r[R.date] > p.to) return;
+    var a = r[R.account] || '（科目なし）', ym = r[R.date].substring(0, 7);
+    (acc[a] = acc[a] || {})[ym] = (acc[a][ym] || 0) + r[R.amount];
+    colT[ym] = (colT[ym] || 0) + r[R.amount]; grand += r[R.amount];
+  });
+  var names = Object.keys(acc).sort();
+  if (!names.length) { $('ledgerDetail').innerHTML = '<p class="note">' + esc(p.label) + ' の領収書はまだありません。</p>'; return; }
+  var d = '<table><tr><th>勘定科目</th>' + p.months.map(function (m) { return '<th>' + parseInt(m.substring(5), 10) + '月</th>'; }).join('') + '<th>合計</th></tr>';
+  names.forEach(function (a) {
+    var t = 0;
+    d += '<tr><td>' + esc(a) + '</td>' + p.months.map(function (m) { var v = acc[a][m] || 0; t += v; return '<td>' + (v ? yen(v) : '') + '</td>'; }).join('') + '<td>' + yen(t) + '</td></tr>';
+  });
+  d += '<tr class="total"><td>合計</td>' + p.months.map(function (m) { return '<td>' + (colT[m] ? yen(colT[m]) : '') + '</td>'; }).join('') + '<td>' + yen(grand) + '</td></tr></table>';
+  $('ledgerDetail').innerHTML = d;
+}
+
+// ---------- 科目の判定 ----------
+function renderQuality() {
+  var by = {};
+  D.rows.forEach(function (r) {
+    if (r[R.status] !== '確定' || !r[R.month]) return;
+    var o = by[r[R.month]] || (by[r[R.month]] = { n: 0, hit: 0, none: 0 });
+    o.n++;
+    if (!r[R.auto]) o.none++; else if (r[R.auto] === r[R.account]) o.hit++;
+  });
+  var ms = Object.keys(by).sort().reverse();
+  if (!ms.length) { $('qualityTable').innerHTML = '<p class="note">確定した領収書がまだありません。</p>'; return; }
+  var h = '<table><tr><th>精算月</th><th>確定した件数</th><th>直さずに確定</th><th>科目を直した</th><th>自動判定なし</th><th>当たった割合</th><th style="text-align:left"></th></tr>';
+  ms.forEach(function (m) {
+    var o = by[m], pct = Math.round(o.hit / o.n * 100);
+    h += '<tr><td>' + monthLabel(m) + '</td><td>' + o.n + '</td><td>' + o.hit + '</td><td>' + (o.n - o.hit - o.none) + '</td><td>' + o.none + '</td><td>' + pct + '%</td><td style="text-align:left"><div class="bar"><i style="width:' + pct + '%"></i></div></td></tr>';
+  });
+  $('qualityTable').innerHTML = h + '</table>';
+}
+
+// ---------- CSV ----------
+function exportCsv() {
+  var m = $('csvMonth').value;
+  if (!m) return;
+  $('csvBtn').disabled = true; $('csvResult').innerHTML = '<p class="note">作成しています…</p>';
+  google.script.run.withSuccessHandler(function (res) {
+    $('csvBtn').disabled = false;
+    if (res.empty) { $('csvResult').innerHTML = '<div class="alert">' + monthLabel(m) + ' の確定済みの領収書がありません。' + (res.skipped ? '未確定が ' + res.skipped + ' 件あります。' : '') + '</div>'; return; }
+    var bin = atob(res.data), bytes = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    var url = URL.createObjectURL(new Blob([bytes], { type: 'application/zip' }));
+    var a = document.createElement('a'); a.href = url; a.download = res.name; document.body.appendChild(a); a.click(); a.remove();
+    var h = '';
+    if (res.skipped) h += '<div class="alert">未確定の領収書が ' + res.skipped + ' 件あり、CSVに含まれていません。</div>';
+    if (res.problems.length) h += '<div class="alert">' + res.problems.map(esc).join('<br>') + '</div>';
+    h += '<table><tr><th>計上会社</th><th>件数</th><th>金額</th></tr>' + res.summary.map(function (s) { return '<tr><td>' + esc(s.company) + '</td><td>' + s.count + '</td><td>' + yen(s.total) + '</td></tr>'; }).join('') + '</table>';
+    h += '<p class="note">ダウンロードが始まらない場合は <a href="' + url + '" download="' + esc(res.name) + '">こちら</a> を押してください。</p>';
+    $('csvResult').innerHTML = h;
+  }).withFailureHandler(function (e) { $('csvBtn').disabled = false; $('csvResult').innerHTML = '<div class="alert">' + esc(e.message) + '</div>'; }).api_exportCsv(m);
+}
+
+function copySlack() {
+  var t = $('slackText');
+  var done = function () { $('copyMsg').textContent = 'コピーしました'; setTimeout(function () { $('copyMsg').textContent = ''; }, 2000); };
+  var fallback = function () { t.select(); try { document.execCommand('copy'); done(); } catch (e) { $('copyMsg').textContent = '文面を選択しました。Ctrl+C でコピーしてください'; } };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t.value).then(done, fallback); else fallback();
+}
+
+Array.prototype.forEach.call(document.querySelectorAll('.tab'), function (b) { b.onclick = function () { showTab(b.dataset.tab); }; });
+$('settleMonth').onchange = renderSettle; $('ledgerYear').onchange = renderLedger; $('ledgerCompany').onchange = renderLedger;
+$('csvBtn').onclick = exportCsv; $('copySlack').onclick = copySlack; $('reload').onclick = load;
+load();
+</script>
+</body>
+</html>

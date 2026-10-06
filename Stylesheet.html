@@ -1,0 +1,35 @@
+<style>
+  :root { --bg:#f4f5f7; --card:#fff; --line:#dcdfe4; --text:#1c2024; --sub:#5f6770; --accent:#1f5fbf; --accent-weak:#e6eefb; --warn:#b3261e; --warn-weak:#fdecea; --ok:#1a7f4b; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:14px/1.6 -apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic UI",Meiryo,sans-serif; }
+  h1 { font-size:18px; margin:0; } h2 { font-size:15px; margin:0 0 12px; }
+  .top { display:flex; align-items:center; gap:16px; padding:12px 20px; background:var(--card); border-bottom:1px solid var(--line); flex-wrap:wrap; }
+  .tabs { display:flex; gap:4px; flex-wrap:wrap; }
+  .tab { border:0; background:none; padding:8px 14px; border-radius:6px; font:inherit; color:var(--sub); cursor:pointer; }
+  .tab.on { background:var(--accent-weak); color:var(--accent); font-weight:600; }
+  .spacer { flex:1; }
+  .wrap { max-width:1200px; margin:0 auto; padding:20px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:16px; margin-bottom:16px; }
+  .row { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:12px; }
+  select, button, textarea { font:inherit; }
+  select { padding:6px 8px; border:1px solid var(--line); border-radius:6px; background:#fff; }
+  .btn { padding:8px 16px; border-radius:6px; border:1px solid var(--line); background:#fff; cursor:pointer; }
+  .btn.primary { background:var(--accent); border-color:var(--accent); color:#fff; font-weight:600; }
+  .btn:disabled { opacity:.5; cursor:default; }
+  .scroll { overflow-x:auto; }
+  table { border-collapse:collapse; width:100%; }
+  th, td { padding:7px 10px; border-bottom:1px solid var(--line); white-space:nowrap; text-align:right; font-variant-numeric:tabular-nums; }
+  th { color:var(--sub); font-weight:600; background:#fafbfc; }
+  th:first-child, td:first-child { text-align:left; }
+  tr.total td { font-weight:700; border-top:2px solid var(--line); }
+  .note { color:var(--sub); font-size:13px; }
+  .alert { background:var(--warn-weak); color:var(--warn); padding:8px 12px; border-radius:6px; margin-bottom:12px; }
+  .stats { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:12px; }
+  .stat { flex:1; min-width:150px; background:#fafbfc; border:1px solid var(--line); border-radius:8px; padding:10px 14px; }
+  .stat b { display:block; font-size:20px; font-variant-numeric:tabular-nums; }
+  .bar { height:8px; background:#e9ecf0; border-radius:4px; overflow:hidden; min-width:120px; }
+  .bar i { display:block; height:100%; background:var(--accent); }
+  .bar.over i { background:var(--warn); }
+  textarea { width:100%; min-height:180px; padding:10px; border:1px solid var(--line); border-radius:6px; }
+  .hide { display:none; }
+</style>
