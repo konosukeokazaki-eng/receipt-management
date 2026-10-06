@@ -80,6 +80,7 @@ assert.deepStrictEqual(rs()._d[0].length, 26);
 // 会社マスタ: C-mindは4月始まり・第12期が2026年開始、LEADは期首月なし
 sheets['会社マスタ']._d[2][2] = 4; sheets['会社マスタ']._d[2][3] = 12; sheets['会社マスタ']._d[2][4] = 2026;
 assert.strictEqual(sheets['会社マスタ']._d[2][0], 'C-mind');
+const lead = sheets['会社マスタ']._d.find(r => r[0] === 'LEAD'); lead[2] = lead[3] = lead[4] = '';
 sheets['利用者マスタ']._d[1][1] = '代表'; sheets['設定']._d.find(r => r[0] === '開始No')[1] = 657;
 run('MASTERS_CACHE_ = null');
 

@@ -46,6 +46,16 @@ assert.strictEqual(L.fiscalPeriod_('2026/10/05', 10, '', '').label, '2026年10�
 assert.strictEqual(L.fiscalPeriod_('2026/09/30', 10, '', '').label, '2025年10月〜2026年9月');
 assert.strictEqual(L.fiscalPeriod_('2026/05/05', 1, '', '').label, '2026年1月〜2026年12月');
 assert.strictEqual(L.fiscalPeriod_('2026/05/05', '', '', ''), null);
+// 6社の期（2026/10/05時点）と期の境目
+assert.strictEqual(L.fiscalPeriod_('2026/10/05', 1, 1, 2021).label, '第6期');
+assert.strictEqual(L.fiscalPeriod_('2026/10/05', 3, 1, 2011).label, '第16期');
+assert.strictEqual(L.fiscalPeriod_('2026/10/05', 3, 1, 2012).label, '第15期');
+assert.strictEqual(L.fiscalPeriod_('2026/10/05', 4, 1, 2023).label, '第4期');
+assert.strictEqual(L.fiscalPeriod_('2026/10/05', 5, 1, 2014).label, '第13期');
+assert.strictEqual(L.fiscalPeriod_('2026/10/05', 8, 1, 2014).label, '第13期');
+assert.strictEqual(L.fiscalPeriod_('2026/07/31', 8, 1, 2014).label, '第12期');
+assert.strictEqual(L.fiscalPeriod_('2026/08/01', 8, 1, 2014).label, '第13期');
+assert.strictEqual(L.fiscalPeriod_('2026/02/28', 3, 1, 2011).label, '第15期');
 // 整形
 assert.strictEqual(L.normMonth_('2026/10'), '2026/10');
 assert.strictEqual(L.normMonth_('2026-9'), '2026/09');

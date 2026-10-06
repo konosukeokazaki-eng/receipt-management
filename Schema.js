@@ -7,13 +7,16 @@ var RECEIPT_HEADERS = ['No', '領収書日付', '店名', '金額', '計上会�
   '確定', '警告', '利用者', 'インボイス', '登録番号', '税率', '税区分', '判定額', '状態',
   '画像', 'ファイルID', '自動判定の科目', '判定の根拠', '飲食', '取込日時', '確定日時'];
 
+// 会社名、DriveのフォルダID、期首月、基準期（第1期）、第1期の開始年
 var DEFAULT_COMPANIES = [
-  ['シーマインドグループ', '1h5CxOrfoLdpJFr4l-8nlBZofQWt27EWy'],
-  ['C-mind', '1FVpFB5hkH8-Nkfks0WSJUKRZKvKsLG3G'],
-  ['キャリア', '1nSwyxz7-Bz-3vx1E2ScxaXFE93Xrbs3v'],
-  ['キャンバスエッジ', '1Id6ddY8hRsXI94py1uoWyfINpW3s1lyV'],
-  ['LEAD', '1v5-Pcor1HYoc9T3xBAndIi5REX6AhJV9'],
-  ['エステート', '1Exn2hT0IR2fWuelrnUpj6-_vKtz9oz5_']
+  ['シーマインドグループ', '1h5CxOrfoLdpJFr4l-8nlBZofQWt27EWy', 1, 1, 2021],
+  ['C-mind', '1FVpFB5hkH8-Nkfks0WSJUKRZKvKsLG3G', 3, 1, 2011],
+  ['シーマインドキャリア', '1nSwyxz7-Bz-3vx1E2ScxaXFE93Xrbs3v', 3, 1, 2012],
+  ['キャンバスエッジ', '1Id6ddY8hRsXI94py1uoWyfINpW3s1lyV', 4, 1, 2023],
+  ['LEAD', '1v5-Pcor1HYoc9T3xBAndIi5REX6AhJV9', 5, 1, 2014],
+  ['シーマインドエステート', '1Exn2hT0IR2fWuelrnUpj6-_vKtz9oz5_', 8, 1, 2014],
+  ['フラットエナジー', '1EtVkSWH4Qgq9mraaKcc3NrzLw2X8AzKZ', 9, 1, 2016],
+  ['ライフサポート', '1XUmJPDjgy4sMjwIzeZNoUQ3gK5PYGO5I', 6, 1, 2017]
 ];
 var DEFAULT_ACCOUNTS = [['交際費', '課税'], ['旅費交通費', '課税'], ['会議費', '課税'], ['車両費', '課税'], ['少額交際費', '課税'],
   ['福利厚生費', '課税'], ['消耗品費', '課税'], ['租税公課', '対象外'], ['通信費', '課税'], ['新聞図書費', '課税']];
@@ -57,7 +60,7 @@ function setupSheets_() {
   var rec = ensureSheet_(ss, SHEET_RECEIPTS, RECEIPT_HEADERS, null);
   ensureSheet_(ss, SHEET_RULES, ['店名・キーワード', '勘定科目', '飲食', '基準以下の科目', '種別', '件数', '更新日'], DEFAULT_RULES);
   ensureSheet_(ss, SHEET_CONFIG, ['項目', '値', '説明'], CONFIG_DEFAULTS);
-  ensureSheet_(ss, SHEET_COMPANY, ['会社名', 'フォルダID', '期首月', '基準期（第N期）', '基準期の開始年', '年間予算'], DEFAULT_COMPANIES.map(function (c) { return [c[0], c[1], '', '', '', '']; }));
+  ensureSheet_(ss, SHEET_COMPANY, ['会社名', 'フォルダID', '期首月', '基準期（第N期）', '基準期の開始年', '年間予算'], DEFAULT_COMPANIES.map(function (c) { return [c[0], c[1], c[2], c[3], c[4], '']; }));
   ensureSheet_(ss, SHEET_USERS, ['利用者', '弥生の補助科目'], [['虎石', ''], ['近藤', '']]);
   ensureSheet_(ss, SHEET_ACCOUNTS, ['勘定科目', '消費税'], DEFAULT_ACCOUNTS);
   var tax = ensureSheet_(ss, SHEET_TAX, ['開始日', '終了日', '控除割合(%)', '税区分名(10%)', '税区分名(8%)'], DEFAULT_TAX);
