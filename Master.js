@@ -5,7 +5,7 @@
 var CONFIG_DEFAULTS = [
   ['飲食費の基準額', 10000, '1人当たりの判定額がこの金額以下なら少額交際費または会議費'],
   ['未処理フォルダID', '13AIMe4Fe2vRVXlMYD3jbTq0B2Di09wtI', '撮影した画像の保存先'],
-  ['保管フォルダID', '1lPfRrCYVST1vZMppSmE652WKLjxgRvCD', '確定後の移動先。この中の会社フォルダへ入る'],
+  ['保管フォルダID', '', '利用者マスタに保管フォルダIDがない利用者の移動先（予備）'],
   ['OCRモデル', 'gemini-3.6-flash', 'Gemini APIのモデル名'],
   ['開始No', 1, '領収書Noの最小値。既存の続きから始める場合に設定'],
   ['Noの桁数', 4, '領収書Noのゼロ埋め桁数'],
@@ -33,10 +33,10 @@ function loadMasters_() {
   sheetRows_(SHEET_CONFIG).forEach(function (r) { if (r[0] !== '') cfg[String(r[0]).trim()] = r[1]; });
 
   var companies = sheetRows_(SHEET_COMPANY).filter(function (r) { return r[0] !== ''; }).map(function (r, i) {
-    return { row: i + 2, name: String(r[0]).trim(), folderId: String(r[1] || '').trim(), startMonth: r[2], baseTerm: r[3], baseStartYear: r[4], budget: toNumber_(r[5]) };
+    return { row: i + 2, name: String(r[0]).trim(), startMonth: r[2], baseTerm: r[3], baseStartYear: r[4], budget: toNumber_(r[5]) };
   });
   var users = sheetRows_(SHEET_USERS).filter(function (r) { return r[0] !== ''; }).map(function (r) {
-    return { name: String(r[0]).trim(), sub: String(r[1] || '').trim() };
+    return { name: String(r[0]).trim(), sub: String(r[1] || '').trim(), folderId: String(r[2] || '').trim() };
   });
   var accounts = sheetRows_(SHEET_ACCOUNTS).filter(function (r) { return r[0] !== ''; }).map(function (r) {
     return { name: String(r[0]).trim(), taxable: String(r[1]).trim() !== '対象外' };
@@ -60,6 +60,11 @@ function isTrue_(v) {
 function accountTaxable_(m, name) {
   for (var i = 0; i < m.accounts.length; i++) if (m.accounts[i].name === name) return m.accounts[i].taxable;
   return true;
+}
+
+function findUser_(m, name) {
+  for (var i = 0; i < m.users.length; i++) if (m.users[i].name === name) return m.users[i];
+  return null;
 }
 
 function findCompany_(m, name) {

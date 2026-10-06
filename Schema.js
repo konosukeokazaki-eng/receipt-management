@@ -7,16 +7,21 @@ var RECEIPT_HEADERS = ['No', '領収書日付', '店名', '金額', '計上会�
   '確定', '警告', '利用者', 'インボイス', '登録番号', '税率', '税区分', '判定額', '状態',
   '画像', 'ファイルID', '自動判定の科目', '判定の根拠', '飲食', '取込日時', '確定日時'];
 
-// 会社名、DriveのフォルダID、期首月、基準期（第1期）、第1期の開始年
+// 会社名、期首月、基準期（第1期）、第1期の開始年
 var DEFAULT_COMPANIES = [
-  ['シーマインドグループ', '1h5CxOrfoLdpJFr4l-8nlBZofQWt27EWy', 1, 1, 2021],
-  ['C-mind', '1FVpFB5hkH8-Nkfks0WSJUKRZKvKsLG3G', 3, 1, 2011],
-  ['シーマインドキャリア', '1nSwyxz7-Bz-3vx1E2ScxaXFE93Xrbs3v', 3, 1, 2012],
-  ['キャンバスエッジ', '1Id6ddY8hRsXI94py1uoWyfINpW3s1lyV', 4, 1, 2023],
-  ['LEAD', '1v5-Pcor1HYoc9T3xBAndIi5REX6AhJV9', 5, 1, 2014],
-  ['シーマインドエステート', '1Exn2hT0IR2fWuelrnUpj6-_vKtz9oz5_', 8, 1, 2014],
-  ['フラットエナジー', '1EtVkSWH4Qgq9mraaKcc3NrzLw2X8AzKZ', 9, 1, 2016],
-  ['ライフサポート', '1XUmJPDjgy4sMjwIzeZNoUQ3gK5PYGO5I', 6, 1, 2017]
+  ['シーマインドグループ', 1, 1, 2021],
+  ['C-mind', 3, 1, 2011],
+  ['シーマインドキャリア', 3, 1, 2012],
+  ['キャンバスエッジ', 4, 1, 2023],
+  ['LEAD', 5, 1, 2014],
+  ['シーマインドエステート', 8, 1, 2014],
+  ['フラットエナジー', 9, 1, 2016],
+  ['ライフサポート', 6, 1, 2017]
+];
+// 利用者、弥生の補助科目、保管フォルダID（この中の「会社 / 期」へ入る）
+var DEFAULT_USERS = [
+  ['虎石', '', '1lPfRrCYVST1vZMppSmE652WKLjxgRvCD'],
+  ['近藤', '', '1MH6MfemruvA_px2XNLaZ7exB6bAFaVYt']
 ];
 var DEFAULT_ACCOUNTS = [['交際費', '課税'], ['旅費交通費', '課税'], ['会議費', '課税'], ['車両費', '課税'], ['少額交際費', '課税'],
   ['福利厚生費', '課税'], ['消耗品費', '課税'], ['租税公課', '対象外'], ['通信費', '課税'], ['新聞図書費', '課税']];
@@ -55,13 +60,42 @@ function ensureSheet_(ss, name, headers, defaults) {
   return { sheet: sh, created: created };
 }
 
+// 保管先を「利用者 / 会社 / 期」に変えたときの移行。何度実行してもよい。
+// 利用者マスタに保管フォルダIDの列を足し、会社マスタの古いフォルダIDを消す。
+function migrateUserFolders_(ss) {
+  var us = ss.getSheetByName(SHEET_USERS);
+  if (us.getRange(1, 3).getValue() === '') {
+    us.getRange(1, 3).setValue('保管フォルダID').setFontWeight('bold').setBackground('#eef1f5');
+    if (us.getLastRow() >= 2) {
+      var names = us.getRange(2, 1, us.getLastRow() - 1, 1).getValues();
+      var ids = names.map(function (n) {
+        var hit = DEFAULT_USERS.filter(function (d) { return d[0] === String(n[0]).trim(); })[0];
+        return [hit ? hit[2] : ''];
+      });
+      us.getRange(2, 3, ids.length, 1).setValues(ids);
+    }
+  }
+  var cs = ss.getSheetByName(SHEET_COMPANY);
+  if (cs.getRange(1, 2).getValue() === 'フォルダID') {
+    cs.getRange(1, 2).setValue('（未使用）');
+    if (cs.getLastRow() >= 2) cs.getRange(2, 2, cs.getLastRow() - 1, 1).setValues(cs.getRange(2, 2, cs.getLastRow() - 1, 1).getValues().map(function () { return ['']; }));
+  }
+  var cf = ss.getSheetByName(SHEET_CONFIG);
+  if (cf.getLastRow() >= 2) {
+    cf.getRange(2, 1, cf.getLastRow() - 1, 2).getValues().forEach(function (r, i) {
+      if (r[0] === '保管フォルダID' && r[1] === '1lPfRrCYVST1vZMppSmE652WKLjxgRvCD') cf.getRange(i + 2, 2, 1, 2).setValues([['', '利用者マスタに保管フォルダIDがない利用者の移動先（予備）']]);
+    });
+  }
+}
+
 function setupSheets_() {
   var ss = getSS_();
   var rec = ensureSheet_(ss, SHEET_RECEIPTS, RECEIPT_HEADERS, null);
   ensureSheet_(ss, SHEET_RULES, ['店名・キーワード', '勘定科目', '飲食', '基準以下の科目', '種別', '件数', '更新日'], DEFAULT_RULES);
   ensureSheet_(ss, SHEET_CONFIG, ['項目', '値', '説明'], CONFIG_DEFAULTS);
-  ensureSheet_(ss, SHEET_COMPANY, ['会社名', 'フォルダID', '期首月', '基準期（第N期）', '基準期の開始年', '年間予算'], DEFAULT_COMPANIES.map(function (c) { return [c[0], c[1], c[2], c[3], c[4], '']; }));
-  ensureSheet_(ss, SHEET_USERS, ['利用者', '弥生の補助科目'], [['虎石', ''], ['近藤', '']]);
+  ensureSheet_(ss, SHEET_COMPANY, ['会社名', '（未使用）', '期首月', '基準期（第N期）', '基準期の開始年', '年間予算'], DEFAULT_COMPANIES.map(function (c) { return [c[0], '', c[1], c[2], c[3], '']; }));
+  ensureSheet_(ss, SHEET_USERS, ['利用者', '弥生の補助科目', '保管フォルダID'], DEFAULT_USERS);
+  migrateUserFolders_(ss);
   ensureSheet_(ss, SHEET_ACCOUNTS, ['勘定科目', '消費税'], DEFAULT_ACCOUNTS);
   var tax = ensureSheet_(ss, SHEET_TAX, ['開始日', '終了日', '控除割合(%)', '税区分名(10%)', '税区分名(8%)'], DEFAULT_TAX);
   if (tax.created) tax.sheet.getRange('A2:B').setNumberFormat('@');

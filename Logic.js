@@ -150,6 +150,7 @@ function buildWarnings_(r) {
   if (!r.amount) w.push('金額なし');
   if (!r.store) w.push('店名なし');
   if (!r.account) w.push('科目なし');
+  if (!r.user) w.push('利用者未入力');
   if (!r.company) w.push('計上会社未入力');
   if (!r.purpose) w.push('用途未入力');
   if (!r.month) w.push('精算月未入力');
@@ -164,6 +165,7 @@ function blockReasons_(r) {
   if (!r.dateYmd) b.push('日付');
   if (!r.amount) b.push('金額');
   if (!r.account) b.push('勘定科目');
+  if (!r.user) b.push('利用者');
   if (!r.company) b.push('計上会社');
   if (!r.month) b.push('精算月');
   return b;

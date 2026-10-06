@@ -48,8 +48,9 @@ function makeFile(id, name, parent) {
     getUrl: () => 'https://file/' + id, getMimeType: () => 'image/jpeg', getBlob: () => ({ getContentType: () => 'image/jpeg', getBytes: () => [1, 2, 3] }) };
   files[id] = f; return f;
 }
-makeFolder('13AIMe4Fe2vRVXlMYD3jbTq0B2Di09wtI', '未処理'); makeFolder('1lPfRrCYVST1vZMppSmE652WKLjxgRvCD', '保管');
-makeFolder('1FVpFB5hkH8-Nkfks0WSJUKRZKvKsLG3G', 'C-mind'); makeFolder('1v5-Pcor1HYoc9T3xBAndIi5REX6AhJV9', 'LEAD');
+makeFolder('13AIMe4Fe2vRVXlMYD3jbTq0B2Di09wtI', '未処理');
+const tora = makeFolder('1lPfRrCYVST1vZMppSmE652WKLjxgRvCD', '虎石克'), kondo = makeFolder('1MH6MfemruvA_px2XNLaZ7exB6bAFaVYt', '近藤光');
+const toraCmind = tora.createFolder('C-mind');
 
 let ocrQueue = [], alerts = [];
 const ctx = {
@@ -81,6 +82,7 @@ assert.deepStrictEqual(rs()._d[0].length, 26);
 sheets['会社マスタ']._d[2][2] = 4; sheets['会社マスタ']._d[2][3] = 12; sheets['会社マスタ']._d[2][4] = 2026;
 assert.strictEqual(sheets['会社マスタ']._d[2][0], 'C-mind');
 const lead = sheets['会社マスタ']._d.find(r => r[0] === 'LEAD'); lead[2] = lead[3] = lead[4] = '';
+assert.strictEqual(sheets['利用者マスタ']._d[2][2], '1MH6MfemruvA_px2XNLaZ7exB6bAFaVYt');
 sheets['利用者マスタ']._d[1][1] = '代表'; sheets['設定']._d.find(r => r[0] === '開始No')[1] = 657;
 run('MASTERS_CACHE_ = null');
 
@@ -128,7 +130,8 @@ let res = run('confirmChecked_()');
 assert.strictEqual(res.done, 2); assert.strictEqual(res.blocked.length, 2); assert.deepStrictEqual(Array.from(res.noPeriod), ['LEAD']);
 assert.strictEqual(get(2, 'STATUS'), '確定'); assert.strictEqual(get(4, 'STATUS'), '未確定'); assert.strictEqual(get(2, 'PURPOSE'), 'A社 山田様');
 assert.strictEqual(files['file_0'].name, '0657_20261005_喫茶アオイ_11000.jpg');
-assert.strictEqual(files['file_0'].parent.name, '第12期'); assert.strictEqual(files['file_1'].parent.name, 'LEAD');
+assert.strictEqual(files['file_0'].parent.name, '第12期'); assert.ok(Object.values(toraCmind.children).includes(files['file_0'].parent));
+assert.strictEqual(files['file_1'].parent.name, 'LEAD'); assert.ok(Object.values(kondo.children).includes(files['file_1'].parent));   // 近藤のフォルダに会社フォルダを作成
 assert.strictEqual(files['file_2'].name, '0659_未処理.jpg');
 // 学習: 店名が科目ルールに記録され、次の同じ店は「履歴」で会議費、計上会社も初期値に入る
 const learned = sheets['科目ルール']._d.filter(r => r[4] === '学習');

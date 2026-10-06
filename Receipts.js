@@ -188,7 +188,7 @@ function confirmChecked_() {
           var company = findCompany_(m, r.company);
           var fp = fiscalPeriod_(r.dateYmd, company && company.startMonth, company && company.baseTerm, company && company.baseStartYear);
           if (!fp) noPeriod[r.company] = true;
-          var folder = targetFolder_(m, company, r.company, fp, folderCache);
+          var folder = targetFolder_(m, r.user, r.company, fp, folderCache);
           var file = DriveApp.getFileById(r.fileId);
           var ext = (file.getName().match(/\.([A-Za-z0-9]+)$/) || [null, 'jpg'])[1];
           file.setName(buildFileName_(r.no, r.dateYmd, r.store, r.amount, ext));
@@ -218,17 +218,19 @@ function confirmChecked_() {
   return res;
 }
 
-// 保管先のフォルダ: 保管フォルダ / 会社 / 期。なければ作る。
-function targetFolder_(m, company, companyName, fp, cache) {
-  var key = companyName + '|' + (fp ? fp.label : '');
+// 保管先のフォルダ: 利用者のフォルダ / 会社 / 期。会社と期のフォルダはなければ作る。
+function targetFolder_(m, userName, companyName, fp, cache) {
+  var key = userName + '|' + companyName + '|' + (fp ? fp.label : '');
   if (cache[key]) return cache[key];
-  var cf;
-  if (company && company.folderId) cf = DriveApp.getFolderById(company.folderId);
-  else {
-    var root = DriveApp.getFolderById(String(m.cfg['保管フォルダID']));
+  var u = findUser_(m, userName);
+  var rootId = (u && u.folderId) || String(m.cfg['保管フォルダID'] || '');
+  if (!rootId) throw new Error('利用者「' + userName + '」の保管フォルダIDが利用者マスタにありません');
+  var ck = userName + '|' + companyName;
+  var cf = cache[ck];
+  if (!cf) {
+    var root = DriveApp.getFolderById(rootId);
     var it = root.getFoldersByName(companyName);
-    cf = it.hasNext() ? it.next() : root.createFolder(companyName);
-    if (company) { getSS_().getSheetByName(SHEET_COMPANY).getRange(company.row, 2).setValue(cf.getId()); company.folderId = cf.getId(); }
+    cf = cache[ck] = it.hasNext() ? it.next() : root.createFolder(companyName);
   }
   var target = cf;
   if (fp) {
