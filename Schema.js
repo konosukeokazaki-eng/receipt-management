@@ -81,6 +81,8 @@ function migrateUserFolders_(ss) {
     if (cs.getLastRow() >= 2) cs.getRange(2, 2, cs.getLastRow() - 1, 1).setValues(cs.getRange(2, 2, cs.getLastRow() - 1, 1).getValues().map(function () { return ['']; }));
   }
   var cf = ss.getSheetByName(SHEET_CONFIG);
+  var keys = cf.getLastRow() >= 2 ? cf.getRange(2, 1, cf.getLastRow() - 1, 1).getValues().map(function (r) { return String(r[0]).trim(); }) : [];
+  CONFIG_DEFAULTS.forEach(function (d) { if (keys.indexOf(d[0]) < 0) cf.appendRow(d); });
   if (cf.getLastRow() >= 2) {
     cf.getRange(2, 1, cf.getLastRow() - 1, 2).getValues().forEach(function (r, i) {
       if (r[0] === '保管フォルダID' && r[1] === '1lPfRrCYVST1vZMppSmE652WKLjxgRvCD') cf.getRange(i + 2, 2, 1, 2).setValues([['', '利用者マスタに保管フォルダIDがない利用者の移動先（予備）']]);

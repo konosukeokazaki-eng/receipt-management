@@ -35,6 +35,7 @@
     <label class="pick main">撮影する<small>1枚ずつ</small><input id="shoot" type="file" accept="image/*" capture="environment" hidden></label>
     <label class="pick">写真をまとめて選ぶ<small>撮影済みの写真から</small><input id="file" type="file" accept="image/*" multiple hidden></label>
   </div>
+  <div class="actions"><button class="pick" id="burst" style="border:1px solid #555">連続撮影を試す<small>別のタブでカメラを開きます（試験的）</small></button></div>
   <div class="hint" id="hint"></div>
   <div class="count" id="count">利用者を選んでから撮影してください</div>
   <div class="list" id="list"></div>
@@ -120,6 +121,32 @@ function noLiveCamera(reason) {
   $('view').classList.add('hide'); $('shutterRow').classList.add('hide');
   $('hint').textContent = 'この画面の中ではカメラを表示できないため、「撮影する」でスマホのカメラを開きます。' + (reason ? '（' + reason + '）' : '');
 }
+// 連続撮影（試験的）: GASの枠の外に別タブを開き、そこでカメラを動かす。撮った写真はこの画面に渡して保存する。
+window.burstAdd = function (dataUrl, who) { add(dataUrl, who); };
+function openBurst() {
+  if (!user) { $('hint').textContent = '先に利用者を選んでください'; return; }
+  var w = window.open('', '_blank');
+  if (!w) { $('hint').textContent = '別タブを開けませんでした。ブラウザのポップアップを許可してください。'; return; }
+  var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>連続撮影</title>'
+    + '<style>html,body{margin:0;height:100%;background:#000;color:#fff;font:15px -apple-system,sans-serif;overflow:hidden}video{position:fixed;inset:0;width:100%;height:100%;object-fit:contain}'
+    + '#bar{position:fixed;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:space-around;padding:16px 16px calc(16px + env(safe-area-inset-bottom));background:rgba(0,0,0,.55)}'
+    + '#sh{width:78px;height:78px;border-radius:50%;border:5px solid #fff;background:#e33}#sh:disabled{opacity:.3}#done{padding:12px 18px;border-radius:8px;border:0;background:#1f5fbf;color:#fff;font-size:16px}'
+    + '#n{min-width:70px;text-align:center;font-size:18px}#msg{position:fixed;top:0;left:0;right:0;padding:12px;text-align:center;background:rgba(0,0,0,.6)}#fl{position:fixed;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .15s}</style></head>'
+    + '<body><video id="v" playsinline autoplay muted></video><div id="fl"></div><div id="msg">カメラを起動しています…</div>'
+    + '<div id="bar"><div id="n">0 枚</div><button id="sh" disabled></button><button id="done">完了</button></div>'
+    + '<script>var WHO=' + JSON.stringify(user) + ',n=0,v=document.getElementById("v"),msg=document.getElementById("msg");'
+    + 'function fail(t){msg.style.display="block";msg.textContent=t;}'
+    + 'if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){fail("このタブでもカメラを使えません。元の画面の「撮影する」をお使いください。");}else{'
+    + 'navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"},width:{ideal:1920},height:{ideal:1440}},audio:false}).then(function(st){v.srcObject=st;msg.textContent="利用者："+WHO+"　領収書を1枚ずつ写してください";document.getElementById("sh").disabled=false;})'
+    + '.catch(function(e){fail("カメラを起動できませんでした（"+(e&&e.name)+"）。元の画面の「撮影する」をお使いください。");});}'
+    + 'document.getElementById("sh").onclick=function(){if(!v.videoWidth)return;var s=Math.min(1,1800/Math.max(v.videoWidth,v.videoHeight)),c=document.createElement("canvas");c.width=Math.round(v.videoWidth*s);c.height=Math.round(v.videoHeight*s);c.getContext("2d").drawImage(v,0,0,c.width,c.height);'
+    + 'try{window.opener.burstAdd(c.toDataURL("image/jpeg",0.85),WHO);n++;document.getElementById("n").textContent=n+" 枚";var f=document.getElementById("fl");f.style.opacity=.8;setTimeout(function(){f.style.opacity=0;},80);}catch(e){fail("元の画面に写真を渡せませんでした。元の画面を閉じていないか確認してください。");}};'
+    + 'document.getElementById("done").onclick=function(){window.close();};<\/script></body></html>';
+  w.document.open(); w.document.write(html); w.document.close();
+  $('hint').textContent = '別タブで撮影し、「完了」を押すとこの画面に戻ります。保存はこの画面で続きます。';
+}
+$('burst').onclick = openBurst;
+
 function startCamera() {
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { noLiveCamera(''); return; }
   navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1440 } }, audio: false }).then(function (stream) {

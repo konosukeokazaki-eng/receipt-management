@@ -23,7 +23,7 @@ function makeSheet(name) {
         setValue: (v) => { set(r, c, v); return api; },
         getRow: () => r, getLastRow: () => r + nr - 1, getColumn: () => c, getLastColumn: () => c + nc - 1, getSheet: () => sh,
       };
-      ['setNumberFormat', 'setFontWeight', 'setBackground', 'setFontColor', 'setDataValidation', 'insertCheckboxes'].forEach(k => api[k] = () => api);
+      ['setNumberFormat', 'setFontWeight', 'setBackground', 'setFontColor', 'setDataValidation', 'insertCheckboxes', 'clearDataValidations'].forEach(k => api[k] = () => api);
       return api;
     },
   };
@@ -53,9 +53,10 @@ const tora = makeFolder('1lPfRrCYVST1vZMppSmE652WKLjxgRvCD', '虎石克'), kondo
 const toraCmind = tora.createFolder('C-mind');
 
 let ocrQueue = [], alerts = [];
+const oldSheet = makeSheet('領収書管理');
 const ctx = {
   console, JSON, Math, Date, String, Number, Object, Array, parseInt, isFinite, isNaN, encodeURIComponent, RegExp, Error,
-  SpreadsheetApp: { getActiveSpreadsheet: () => ss, getUi: () => ({ alert: (m) => alerts.push(m), createMenu: chain }), flush: () => {}, newDataValidation: chain, newConditionalFormatRule: chain, getActiveSheet: () => sheets['領収書管理'] },
+  SpreadsheetApp: { getActiveSpreadsheet: () => ss, getUi: () => ({ alert: (m) => alerts.push(m), createMenu: chain }), flush: () => {}, openById: (id) => ({ getSheetByName: () => oldSheet }), newDataValidation: chain, newConditionalFormatRule: chain, getActiveSheet: () => sheets['領収書管理'] },
   DriveApp: { getFolderById: (id) => { if (!folders[id]) throw new Error('no folder ' + id); return folders[id]; }, getFileById: (id) => { if (!files[id]) throw new Error('no file ' + id); return files[id]; } },
   LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }), getDocumentLock: () => ({ tryLock: () => true, releaseLock() {} }) },
   PropertiesService: { getScriptProperties: () => ({ getProperty: (k) => (k === 'GEMINI_API_KEY' ? 'key' : null) }) },
@@ -70,7 +71,7 @@ const ctx = {
   HtmlService: {}, ScriptApp: { getService: () => ({ getUrl: () => 'https://app' }) },
 };
 vm.createContext(ctx);
-['Logic.js', 'Main.js', 'Auth.js', 'Master.js', 'Schema.js', 'Receipts.js', 'Capture.js', 'Admin.js'].forEach(f => vm.runInContext(fs.readFileSync(path.join(__dirname, '..', f), 'utf8'), ctx, { filename: f }));
+['Logic.js', 'Main.js', 'Auth.js', 'Master.js', 'Schema.js', 'Receipts.js', 'Capture.js', 'Admin.js', 'Migrate.js'].forEach(f => vm.runInContext(fs.readFileSync(path.join(__dirname, '..', f), 'utf8'), ctx, { filename: f }));
 const run = (code) => vm.runInContext(code, ctx);
 const C = run('COL'), rs = () => sheets['領収書管理'];
 const get = (row, k) => rs()._d[row - 1][C[k] - 1];
@@ -160,4 +161,21 @@ makeFile('direct1', 'scan.jpg', folders['13AIMe4Fe2vRVXlMYD3jbTq0B2Di09wtI']);
 ocrQueue.push({ date: '2026-10-01', store: '文具店', amount: 550, invoice_number: null, people: null, tax_rate: '10', is_food: false, account: '消耗品費' });
 ctx.menuImportFolder();
 assert.strictEqual(get(7, 'NO'), '0662'); assert.strictEqual(get(7, 'ACCOUNT'), '消耗品費'); assert.ok(alerts.pop().includes('新しく取り込んだファイル: 1件'));
+// 過去データの移行: 見出しは3行目、データは4行目から。会社名の読み替え、重複Noの除外、科目の学習
+[[''], ['', '', ''], ['領収書No', '精算月', '勘定科目', '領収書日付', '曜日', '金額', '店名', '他社様名 or 用途', '計上会社', 'ファイル名', 'インボイス', '', '利用者'],
+ ['0001', '2026/04', '旅費交通費', new Date(2026, 3, 2), '木', 1200, '東京無線', '移動', 'キャリア', 'x.jpg', '有', '', '虎石'],
+ ['0002', new Date(2026, 3, 1), '交際費', '2026/04/03', '金', 30000, '鮨まつ', 'C社', 'エステート', '', '無し', '', '近藤'],
+ ['0657', '2026/04', '会議費', '2026/04/04', '', 500, '重複', '', 'LEAD', '', '', '', '虎石'],
+ ['', '', '', '', '', '', '', '', '', '', '', '', '']].forEach(r => oldSheet._d.push(r));
+run('MASTERS_CACHE_ = null');
+const mg = run("migrateOld_('old')");
+assert.strictEqual(mg.added, 2); assert.strictEqual(mg.dup, 1); assert.strictEqual(mg.learned, 2); assert.strictEqual(Array.from(mg.unknownCompanies).length, 0);
+assert.ok(mg.mapping.includes('store=G') && mg.mapping.includes('user=M') && mg.mapping.includes('amount=F'));
+const last = rs().getLastRow();
+assert.strictEqual(get(last - 1, 'NO'), '0001'); assert.strictEqual(get(last - 1, 'COMPANY'), 'シーマインドキャリア'); assert.strictEqual(get(last - 1, 'STATUS'), '確定');
+assert.strictEqual(get(last, 'MONTH'), '2026/04'); assert.strictEqual(get(last, 'COMPANY'), 'シーマインドエステート'); assert.strictEqual(get(last, 'INVOICE'), '無'); assert.strictEqual(get(last, 'AUTOACC'), '');
+assert.strictEqual(run("migrateOld_('old')").added, 0);   // 2回実行しても増えない
+ocrQueue.push({ date: '2026-10-06', store: '東京無線', amount: 900, invoice_number: null, people: null, tax_rate: '10', is_food: true, account: '会議費' });
+up = ctx.api_upload({ data: 'eA==', user: '虎石' }); ctx.api_ocr(up.no);
+assert.strictEqual(get(rs().getLastRow(), 'ACCOUNT'), '旅費交通費'); assert.strictEqual(get(rs().getLastRow(), 'BASIS'), '履歴'); assert.strictEqual(get(rs().getLastRow(), 'COMPANY'), 'シーマインドキャリア');
 console.log('flow tests passed');

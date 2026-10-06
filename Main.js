@@ -45,6 +45,7 @@ function onOpen() {
     .addSeparator()
     .addItem('アプリのURLを表示', 'menuShowUrls')
     .addItem('初期設定（シートを作成）', 'menuSetup')
+    .addItem('過去データを写す（旧シートから）', 'menuMigrate')
     .addToUi();
 }
 
